@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<meta charset="UTF-8">
+<head>
+    <style>
+        .c {
+            margin: 1px;
+            width: 19px;
+            height: 19px;
+            background: hotpink;
+            position: absolute;
+        }
+
+        .d {
+            margin: 1px;
+            width: 19px;
+            height: 19px;
+            background: yellowgreen;
+            position: absolute;
+        }
+        .f {
+            top: 0;
+            left: 0;
+            background: blueviolet;
+            position: absolute;
+        }
+    </style>
+    <script type="text/javascript">
+    </script>
+</head>
+<body>
+</body>
+</html>
+<script>
+    var over = false,
+            shapes = (
+            "0,1,1,1,2,1,3,1;" + //长条形
+            "1,0,1,1,1,2,2,1;" +   // 土
+            "2,0,2,1,2,2,1,2;" +    // 反7
+            "0,1,1,1,1,2,2,2;" +    //Z
+            "1,2,2,2,2,1,3,1;" +      // 反Z
+            "1,0,1,1,1,2,2,2;" +     //7
+            "1,1,2,1,1,2,2,2"          // 田
+            ).split(";");
+
+    function create(tag, className) {
+        var ele = document.createElement(tag);
+        ele.className = className;
+        document.body.appendChild(ele);
+        return ele;
+    }
+    function Feild (w,h) {
+        this.width = w || 10;
+        this.height = h || 20;
+    }
+    Feild.prototype ={
+        constructor: Feild,
+        _showBackground: function(){
+            var f =create('div','f');
+            f.style.width = this.width * 20 + 'px';
+            f.style.height = this.height *20 + 'px'
+        },
+        storeBlock: function(shape, x, y){
+            var tempD = new Tetris('d', shape, x, y);
+            var i = 0;
+            while(i<shape.length) {
+                this[ shape[ i ] - -x - -( shape[ i + 1 ] - -y)*this.width ] = tempD.divs[i/2];
+                i+=2;
+            }
+        },
+        judgeFull:function() {
+            for (var i = 0; i < this.height; i++) {
+                var count = 0;
+                for (var j = 0; j < this.width; j++) {
+                    count += this[i * this.width + j] ? 1 : 0;
+                }
+                if (count === this.width) {
+                    console.log(i);
+                    this.removeLine(i);
+                }
+            }
+        },
+         removeLine: function( line ) {
+             for (var i = 0; i < this.width; i++) { //遍历删除
+                 document.body.removeChild(this[line * this.width + i]);
+             }
+             for (var j = line; j > 0; j--) { // 复原
+                 for (var k = 0; k < this.width; k++) {
+                     if ( this[(j-1)*this.width + k]) { //
+                         this[(j-1)*this.width + k].style.top = j*20 +'px';
+                     }
+                     this[ j*this.width + k] = this[ (j-1)*this.width +k ];
+                 }
+             }
+         }
+    }
+    function Tetris (c,t,x,y,arr) {
+        c = c ? c : "c";
+        this.divs =arr || [create("div", c), create("div", c), create("div", c), create("div", c)];
+        this.feild = null;  //对象使用
+        this._init(x,y,t);
+    }
+    Feild.Wid = 10;
+    Feild.Hig = 20;
+    Tetris.hBoderLimit = function (shape, x, y,that) { // 横坐标限定
+        var r1 = 0;
+        for (var i = 0; i < shape.length; i += 2) {
+            if (shape[i] - -x < 0) {
+                r1 = shape[i] - -x;
+            } else if (shape[i] - -x >= that.width) {
+                r1 = shape[i] - -x;
+            }
+            console.log(that); // 函数本身
+            if ( that[shape[i] - - x - -(shape[i + 1]- -y) * that.width]) {
+                 return "D";  //  不让他左右移动
+            }
+        }
+        return r1 > 0 ? r1 - Feild.Wid - -1 : r1; //后一个 r1 = 0;
+    },
+    Tetris.contactBottom = function (self, shape, x, y) {
+        self = self || this;
+        var r2 = 'N';
+        for ( var i = 0; i < 8; i += 2 ) {
+            if ( shape[ i+1] - - y >= Feild.Hig || self[shape[i] - -x - -(shape[i + 1] - -y) * Feild.Wid] ) {
+                r2 = 'D';
+            }
+        }
+        return r2;
+    },
+    Tetris.prototype = {
+        constructor: Tetris,
+        _init :function (x,y,t) {
+            this.x = typeof x !=='undefined' ? x : 3;
+            this.y = typeof y !=='undefined' ? y: 0;
+            this.t = t ? t: shapes[Math.floor(Math.random() * (shapes.length - 0.00001))].split(",");
+            this._show();
+
+            if ( this.feild && Tetris.contactBottom(this.feild, this.t, this.x, this.y - 1) ==='D' ) {
+                over = true;
+                this.feild.storeBlock(this.t, this.x, this.y);
+                clearInterval(timer);
+                alert("Game Over");
+            }
+        },
+        _show: function(){
+            for ( var i in this.divs) {
+                    this.divs[i].style.left = (this.t[i*2]*1 + this.x)*20 + 'px';
+                    this.divs[i].style.top = (this.t[i*2+1]*1 + this.y)*20 + 'px';
+            }
+        },
+        vMove: function() {  // 下落
+            if ( Tetris.contactBottom(this.feild, this.t, this.x, this.y - -1) ==='D') {
+                this.feild.storeBlock(this.t,this.x,this.y);   //让feild存储下落方块
+                this.feild.judgeFull();
+                this._init();
+            } else {
+                this.y++;
+                this._show();
+            }
+        },
+        hMove: function( step ) { //左右移动
+            if( Tetris.hBoderLimit(this.t, this.x - -step, this.y, this.feild) === 0) {
+                this.x -= -step;
+                this._show();
+            }
+
+        },
+        rotate: function () {
+            var s =this.t;
+            var tempShape = [3 - s[1], s[0], 3 - s[3], s[2], 3 - s[5], s[4], 3 - s[7], s[6]];
+            var r = Tetris.hBoderLimit( tempShape, this.x, this.y, this.feild);
+            if ( r === 0 ) {
+                this.t =  tempShape;
+            }else if(Tetris.hBoderLimit( tempShape,this.x - r, this.y, this.feild ) === 0) {
+                this.x -= r;
+                this.t = tempShape;
+            }
+            this._show();
+        }
+    }
+    var  f = new Feild();
+    f._showBackground();
+    var t = new Tetris();
+    t.feild = f;
+
+    var timer = setInterval(function(){
+        if(1) {
+            t.vMove();
+        }
+    }, 500);
+    document.onkeydown = function(e){
+        var event = window.event?window.event: e;
+        switch( event.keyCode ) {
+            case 38:  //up
+            case 87:  //w
+                t.rotate();
+                break;
+            case 40:  // down
+            case 83:  // s
+                t.vMove(1);
+                break;
+            case 37: // left
+            case 65: // a
+                t.hMove(-1);
+                break;
+            case 39: // right
+            case 68: // d
+                t.hMove(1);
+                break;
+            case 32: //space
+                clearInterval(timer);
+                break;
+            default:
+                  break;
+        }
+    }
+
+</script>
